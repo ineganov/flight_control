@@ -73,9 +73,9 @@ wire        IMU_WE;
 wire [31:0] RTC_RD;
 
 //Engine Control signals
-wire [31:0] ENGINES_13_CTRL_WD, ENGINES_24_CTRL_WD, 
+wire [31:0] ENGINES_13_WD, ENGINES_24_WD, 
             ENGINES_13_CTRL, ENGINES_24_CTRL;
-wire        ENGINES_13_CTRL_WE, ENGINES_24_CTRL_WE;
+wire        ENGINES_13_WE, ENGINES_24_WE;
 
 //===================SYSTEM CLOCK================================//
 
@@ -138,55 +138,61 @@ mux2 isrc_mux  (I_SOURCE,  INST_RD,
 
 //=====================BUS CONTROLLER============================//
 
-bus_controller bc(   .CPU_ADDR         ( CPU_ADDR     ),
-                     .CPU_WE           ( CPU_WE       ),
-                     .CPU_BE           ( CPU_BE       ),
-                     .CPU_WD           ( CPU_WD       ),
-                     .CPU_RD           ( CPU_RD       ),
+bus_controller bc(   .CPU_ADDR         ( CPU_ADDR      ),
+                     .CPU_WE           ( CPU_WE        ),
+                     .CPU_BE           ( CPU_BE        ),
+                     .CPU_WD           ( CPU_WD        ),
+                     .CPU_RD           ( CPU_RD        ),
                      
-                     .STACK_MEM_A      ( STACK_MEM_A  ),
-                     .STACK_MEM_BE     ( STACK_MEM_BE ),
-                     .STACK_MEM_WE     ( STACK_MEM_WE ),
-                     .STACK_MEM_WD     ( STACK_MEM_WD ),
-                     .STACK_MEM_RD     ( STACK_MEM_RD ),
+                     .STACK_MEM_A      ( STACK_MEM_A   ),
+                     .STACK_MEM_BE     ( STACK_MEM_BE  ),
+                     .STACK_MEM_WE     ( STACK_MEM_WE  ),
+                     .STACK_MEM_WD     ( STACK_MEM_WD  ),
+                     .STACK_MEM_RD     ( STACK_MEM_RD  ),
                      
-                     .CODE_MEM_A       ( INST_D_A     ),
-                     .CODE_MEM_WE      ( INST_D_WE    ),
-                     .CODE_MEM_WD      ( INST_D_WD    ),
-                     .CODE_MEM_RD      ( INST_D_RD    ),
+                     .CODE_MEM_A       ( INST_D_A      ),
+                     .CODE_MEM_WE      ( INST_D_WE     ),
+                     .CODE_MEM_WD      ( INST_D_WD     ),
+                     .CODE_MEM_RD      ( INST_D_RD     ),
                      
-                     .JTAG_WE          ( JTAG_WE      ),
-                     .JTAG_WD          ( JTAG_WD      ),
-                     .JTAG_RD          ( JTAG_RD      ),
+                     .JTAG_WE          ( JTAG_WE       ),
+                     .JTAG_WD          ( JTAG_WD       ),
+                     .JTAG_RD          ( JTAG_RD       ),
                      
-                     .ADC_WE           ( ADC_WE       ),
-                     .ADC_WD           ( ADC_WD       ),
-                     .ADC_RD           ( ADC_RD       ),
+                     .ADC_WE           ( ADC_WE        ),
+                     .ADC_WD           ( ADC_WD        ),
+                     .ADC_RD           ( ADC_RD        ),
                      
-                     .IMU_WD           ( IMU_WD       ),
-                     .IMU_RD           ( IMU_RD       ),
-                     .IMU_WE           ( IMU_WE       ),
+                     .IMU_WD           ( IMU_WD        ),
+                     .IMU_RD           ( IMU_RD        ),
+                     .IMU_WE           ( IMU_WE        ),
                      
-                     .UART_TX_WD       ( UART_TX_WD   ), 
-                     .UART_TX_RD       ( UART_TX_RD   ),
-                     .UART_TX_WE       ( UART_TX_WE   ),
+                     .UART_TX_WD       ( UART_TX_WD    ), 
+                     .UART_TX_RD       ( UART_TX_RD    ),
+                     .UART_TX_WE       ( UART_TX_WE    ),
                      
-                     .UART_RX_RD       ( UART_RX_RD   ),
-                     .UART_RX_WE       ( UART_RX_WE   ),
+                     .UART_RX_RD       ( UART_RX_RD    ),
+                     .UART_RX_WE       ( UART_RX_WE    ),
+
+                     .ENGINES_13_WD    ( ENGINES_13_WD ),
+                     .ENGINES_13_WE    ( ENGINES_13_WE ),
+
+                     .ENGINES_24_WD    ( ENGINES_24_WD ),
+                     .ENGINES_24_WE    ( ENGINES_24_WE ),
                      
-                     .RTC              ( RTC_RD       ),
+                     .RTC              ( RTC_RD        ),
                      
-                     .RADIO_CH1        ( RADIO_CH1    ),
-                     .RADIO_CH2        ( RADIO_CH2    ),
-                     .RADIO_CH3        ( RADIO_CH3    ),
-                     .RADIO_CH4        ( RADIO_CH4    ),
-                     .RADIO_CH5        ( RADIO_CH5    ),
-                     .RADIO_CH6        ( RADIO_CH6    ),
+                     .RADIO_CH1        ( RADIO_CH1     ),
+                     .RADIO_CH2        ( RADIO_CH2     ),
+                     .RADIO_CH3        ( RADIO_CH3     ),
+                     .RADIO_CH4        ( RADIO_CH4     ),
+                     .RADIO_CH5        ( RADIO_CH5     ),
+                     .RADIO_CH6        ( RADIO_CH6     ),
                      
-                     .USER_IO          ( USER_IO      ),
+                     .USER_IO          ( USER_IO       ),
                      
-                     .LEDS_WE          ( LEDS_WE      ),
-                     .LEDS_WD          ( LEDS_WD      ));
+                     .LEDS_WE          ( LEDS_WE       ),
+                     .LEDS_WD          ( LEDS_WD       ));
 
 //========================LEDS===================================//
 
@@ -254,7 +260,7 @@ buffered_rx the_uart_rx( .CLK     ( CLK_CPU    ),
                          
 //=================SIMPLE REALTIME CLOCK=========================//
 
-rtc   the_rtc (      .CLK      ( CLK_1M   ),
+rtc   the_rtc (      .CLK      ( CLK_CPU  ),
                      .RESET    ( RESET    ),
                      .DATA_OUT ( RTC_RD   ) );
 
@@ -293,13 +299,13 @@ radio_rx radio_ch_6( .CLK_1M   ( CLK_1M    ),
 //===================ENGINES REGISTERS===========================//
                     
 io32 eng_13_reg( .CLK     ( CLK_CPU            ),
-                 .WE      ( ENGINES_13_CTRL_WE ),
-                 .DATA_IN ( ENGINES_13_CTRL_WD ),
+                 .WE      ( ENGINES_13_WE ),
+                 .DATA_IN ( ENGINES_13_WD ),
                  .IO_OUT  ( ENGINES_13_CTRL    ) );
 
 io32 eng_24_reg( .CLK     ( CLK_CPU            ),
-                 .WE      ( ENGINES_24_CTRL_WE ),
-                 .DATA_IN ( ENGINES_24_CTRL_WD ),
+                 .WE      ( ENGINES_24_WE ),
+                 .DATA_IN ( ENGINES_24_WD ),
                  .IO_OUT  ( ENGINES_24_CTRL    ) );
 
 //====================ENGINES CONTROL============================//

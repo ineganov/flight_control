@@ -18,6 +18,7 @@ module datapath ( input CLK,
                   input        BRANCH_GTZ,   //branch greater than zero
                   input        JUMP,         //j-type jump
                   input        JUMP_R,       //jr, jalr
+                  input        NOT_IMPLTD,   //unimplemented instruction
                   input        ALU_SRC_B,    //ALU Operand B 0 - reg_2, 1 - immediate
                   input  [6:0] ALU_OP,       //ALU Operation select
                   input  [1:0] REG_DST,      //write destination in regfile (0 - rt, 1 - rd, 1X -- 31)
@@ -26,7 +27,23 @@ module datapath ( input CLK,
  
                   output [5:0] OPCODE,       //instruction opcode
                   output [5:0] FCODE,        //instruction fcode
+                  output [4:0] RS,           //instruction RS field
                   output [4:0] RT,           //instruction RT field
+                  
+                 //Coprocessor 0 interface
+                  output [31:0] DEC_STAGE_ADDR,
+                  output        DEC_STAGE_EXCP,
+                  output        DELAY_SLOT,  //marks the instruction in delay slot
+
+                  output [31:0] EXE_STAGE_ADDR,
+                  output        EXE_STAGE_EXCP,
+
+                  output [31:0] MEM_STAGE_ADDR,
+                  output        MEM_STAGE_EXCP,
+
+                  output  [4:0] CP0_REG_SELECT, 
+                  input  [31:0] CP0_REG_OUT,
+                  input  [31:0] EXCP_VECTOR,
                  
                  //External inst memory iface
                   output [29:0] inst_mem_addr,
@@ -58,7 +75,8 @@ wire  [6:0] alu_op_e;
 wire  [4:0] reg_dst_addr_e, rs_e, rt_e, rd_e, shamt_e;
 wire  [1:0] reg_dst_e, mfcop_sel_e, mem_optype_e;
 wire        write_reg_e, write_mem_e, aluormem_e, multiply_e, 
-            alu_src_b_e, link_e, alu_zero, mem_partial_e;
+            alu_src_b_e, link_e, alu_zero, mem_partial_e,
+            br_inst_e;
 
 //MEM:
 wire [31:0] aluout_m, src_b_m, mem_reordered_m;
@@ -75,21 +93,26 @@ assign pc_plus_4 = pc + 4;
 assign stall = lw_stall | br_stall;
 assign inst_mem_addr = pc[31:2];
 
-wire [1:0] next_pc_select = JUMP      ? 2'b11 :
-                            JUMP_R    ? 2'b10 :
-                            do_branch ? 2'b01 :
-                                        2'b00 ;
+wire [2:0] next_pc_select = NOT_IMPLTD ? 3'b100 :
+                            JUMP       ? 3'b011 :
+                            JUMP_R     ? 3'b010 :
+                            do_branch  ? 3'b001 :
+                                         3'b000 ;
 
-mux4  pc_src_mux( next_pc_select,
-                  pc_plus_4,        //00: pc = pc + 4
-                  branch_target,    //01: conditional branch
-                  jumpr_target,     //10: from register file
-                  jump_target,      //11: from j-type instruction
+mux8  pc_src_mux( next_pc_select,
+                  pc_plus_4,        //000: pc = pc + 4
+                  branch_target,    //001: conditional branch
+                  jumpr_target,     //010: from register file
+                  jump_target,      //011: from j-type instruction
+                  32'h00000100,     //100: Exception vector
+                  32'h00000100,
+                  32'h00000100,
+                  32'h00000100,
                   next_pc_reg );
 
 ffd   pc_reg(CLK, RESET, ~stall & RUN, next_pc_reg, pc );
 
-ffd #(64) pipe_reg_D(CLK, RESET, ~stall & RUN, 
+ffd #(64) pipe_reg_D(CLK, RESET | NOT_IMPLTD, ~stall & RUN, 
                               {  inst_mem_data, 
                                  pc_plus_4 }, 
 
@@ -101,10 +124,14 @@ ffd #(64) pipe_reg_D(CLK, RESET, ~stall & RUN,
 //------------------------DECODE STAGE---------------------------------------//
 assign OPCODE = inst_d[31:26];
 assign FCODE  = inst_d [5:0];
+assign RS     = inst_d[25:21];
 assign RT     = inst_d[20:16];
 
-assign rs_d = inst_d[25:21];
-assign rt_d = inst_d[20:16];
+assign rs_d = RS;
+assign rt_d = RT;
+
+assign DEC_STAGE_ADDR = pc_plus_4_d;
+assign DEC_STAGE_EXCP = NOT_IMPLTD;
 
 regfile rf_unit(.CLK        (CLK_MEM        ), 
                 .WE         (write_reg_w    ), 
@@ -162,7 +189,7 @@ assign link_d = JUMP | JUMP_R | BRANCH_GEZ | BRANCH_LTZ;
 
 
 
-ffd #(168) pipe_reg_E(CLK, RESET | stall, RUN,
+ffd #(169) pipe_reg_E(CLK, RESET | stall, RUN,
                   {  WRITE_REG,         // 1/ write to register file
                      WRITE_MEM,         // 1/ write data memory
                      MEM_PARTIAL,       // 1/ memory byte- or halfword access
@@ -170,6 +197,7 @@ ffd #(168) pipe_reg_E(CLK, RESET | stall, RUN,
                      ALUORMEM_WR,       // 1/ write regfile from alu or from memory
                      MULTIPLY,          // 1/ do multiplication and write hi&lo
                      link_d,            // 1/ link
+                     br_inst,           // 1/ branch instruction
                      ALU_SRC_B,         // 1/ ALU Operand B 0 - reg_2, 1 - immediate
                      ALU_OP,            // 7/ ALU Operation select
                      REG_DST,           // 2/ write destination in regfile (0 - rt, 1 - rd)
@@ -190,6 +218,7 @@ ffd #(168) pipe_reg_E(CLK, RESET | stall, RUN,
                      aluormem_e,        // 1/ write regfile from alu or from memory
                      multiply_e,        // 1/ do multiplication and write hi&lo
                      link_e,            // 1/ link
+                     br_inst_e,         // 1/ branch instruction
                      alu_src_b_e,       // 1/ ALU Operand B 0 - reg_2, 1 - immediate
                      alu_op_e,          // 7/ ALU Operation select
                      reg_dst_e,         // 2/ write destination in regfile (0 - rt, 1 - rd)
@@ -206,6 +235,11 @@ ffd #(168) pipe_reg_E(CLK, RESET | stall, RUN,
 //---------------------------------------------------------------------------//
 
 //------------------------EXECUTE STAGE--------------------------------------//
+
+assign EXE_STAGE_ADDR = pc_plus_4_e;
+assign EXE_STAGE_EXCP = 1'b0;
+assign CP0_REG_SELECT = rd_e;
+assign DELAY_SLOT = br_inst_e;
 
 mux4 #(5) regfile_wr_addr_mux( reg_dst_e, 
                                rt_e, 
@@ -263,7 +297,7 @@ mux4 aluout_mux(  mfcop_sel_e,
                   aluout_e,
                   hi_e,           //MFHI
                   lo_e,           //MFLO
-                  32'hXXXXXXXX,   //MFC0
+                  CP0_REG_OUT,    //MFC0
                   aluout_mux_e ); 
 
 ffd #( 75) pipe_reg_M(CLK, RESET, RUN,
@@ -291,6 +325,9 @@ ffd #( 75) pipe_reg_M(CLK, RESET, RUN,
 //------------------------MEMORY STAGE---------------------------------------//
 assign data_mem_we = write_mem_m;
 assign data_mem_addr = aluout_m[31:2];
+
+assign MEM_STAGE_ADDR = 32'hEEEE8888;
+assign MEM_STAGE_EXCP = 1'b0;
 
 store_reorder st_reorder_unit( .LO_ADDR ( aluout_m[1:0]  ),
                                .DATA_IN ( src_b_m        ),

@@ -12,6 +12,7 @@ logic [7:0] reg_ram; //Altera syncram optimization
 
 
 wire [DEPTH-1:0] write_ptr, read_ptr;
+wire [DEPTH-1:0] byte_count = write_ptr - read_ptr;
 
 wire tx_ready, tx_en;
 wire fifo_empty = tx_ready && (write_ptr == read_ptr);
@@ -34,7 +35,7 @@ uart_tx #(434)  the_uart_tx( .CLK    ( CLK           ),  //434 --> 115200 @50MHz
                              .READY  ( tx_ready      ),
                              .TX     ( UART_TX       ) );                     
                      
-assign DATA_RD = {31'd0, fifo_empty};
+assign DATA_RD = {{32-DEPTH{1'b0}}, byte_count};
                      
 endmodule
 //=============================================================//
