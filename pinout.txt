@@ -1,0 +1,32 @@
+Engines -- new config
+Engines are numerated clockwise with the first motor at the axis mark.
+Engines 1 and 2 are at GPIO_0.
+Engines 3 and 4 are at GPIO_1.
+
+E1L	0_32	GPIO_025	PIN_D9
+E2R	0_34	GPIO_027	PIN_E10
+E3L	1_8	GPIO_15		PIN_T12
+E4R	1_10	GPIO_17		PIN_T11
+
+
+Radio
+CH1	GPIO_123	N16
+CH2	GPIO_121	P16
+CH3	GPIO_119	L15
+CH4	GPIO_117	K16
+CH5	GPIO_115	N11
+CH6	GPIO_113	P9
+
+
+IMU_SCL		GPIO_032	D12
+IMU_SDA		GPIO_033	B12
+
+DEBUG[0]	GPIO_132 	J13
+DEBUG[1]	GPIO_133 	J14
+
+
+
+
+UART_RX		GPIO_125	P14
+UART_TX		GPIO_127	N14
+XBEE_RESETN	GPIO_129	L13

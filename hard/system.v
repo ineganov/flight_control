@@ -21,6 +21,7 @@ module system   (  input         CLK,
                   //UART
                    input         UART_RX,
                    output        UART_TX,
+                   output        XBEE_RESETN,
                    
                   //4-way Engine control
                    output [3:0]  ENGINE_CONTROL,
@@ -133,6 +134,8 @@ jtag jtag_m     ( .CPU_CLK    ( CLK_CPU    ),
                   .MEM_INST   ( INST_RD    ),  //current instruction from main mem
                   .INST_ADDR  ( INST_ADDR  )); //cpu inst memory address
 
+assign XBEE_RESETN = ~RESET;
+                  
 mux2 isrc_mux  (I_SOURCE,  INST_RD, 
                            DEBUG_INST,    CPU_INSTRUCTION );
 

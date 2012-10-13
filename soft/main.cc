@@ -92,7 +92,7 @@ int main()
 
 	*DEV_ENG_13 = 0;
 	*DEV_ENG_24 = 0;
-
+	/*
 	while(1)
 	{	print_str("RADIO_CH1: "); print_hex(*DEV_RADIO_1);
 		print_str("RADIO_CH2: "); print_hex(*DEV_RADIO_2);
@@ -114,7 +114,7 @@ int main()
 
 	//throttle: 1128 - 1989
 
-
+	*/
 
 	int num_ch = 0;
 	while(1)
