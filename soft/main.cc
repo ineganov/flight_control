@@ -24,6 +24,7 @@ DEFINE_EXTERNAL_DEVICE(DEV_RADIO_4,	0x00000034);
 DEFINE_EXTERNAL_DEVICE(DEV_RADIO_5,	0x00000038);
 DEFINE_EXTERNAL_DEVICE(DEV_RADIO_6,	0x0000003C);
 
+const unsigned int MPU6050_ADDR = 0x1D0;
 
 //===============FUNCTION DECLARATIONS=================//
 
@@ -75,7 +76,28 @@ void print_str(const char * str)
 	//or wait for a specific condition, say if the buffer is half-full:
 	while(*DEV_UART_TX > 15) {}
 
-	print_str(str + free_space); } 
+	print_str(str + free_space); }
+
+static void i2c_start()
+{   *DEV_IMU = 0x000400FF;
+    while (*DEV_IMU < 0);	}
+
+static void i2c_stop() {
+    *DEV_IMU = 0x000100FF;
+    while (*DEV_IMU < 0);	}
+
+static int i2c_io(int b) {
+    b &= 0x1FF;
+    *DEV_IMU = 0x00020000 | b;
+    while (*DEV_IMU < 0);
+    return *DEV_IMU;	}
+
+void mpu6050_write(int reg, int byte)
+{   i2c_start();
+    i2c_io(MPU6050_ADDR);
+    i2c_io(0x100 | reg);
+    i2c_io(0x100 | byte);
+    i2c_stop();	}
 
 //===================MAIN==============================//
 const unsigned char lv[] = {0x81, 0x42, 0x24, 0x18};
@@ -92,6 +114,51 @@ int main()
 
 	*DEV_ENG_13 = 0;
 	*DEV_ENG_24 = 0;
+
+	mpu6050_write(0x6B, 0x80); //Device reset
+	delay(100000);			   //approx 5ms grace period
+	mpu6050_write(0x6B, 0x00); //Sleep disable
+
+	mpu6050_write(0x1A, 0x03); //Low-pass ON
+	mpu6050_write(0x1B, 0x18); //GYRO_CONFIG: +-2000 dps range
+	mpu6050_write(0x1C, 0x18); //ACC_CONFIG: +-16g range
+
+	int a, b, c, d, gX, gY; 
+	int ax, axL, ay, ayL, az, azL;
+	int gx, gxL, gy, gyL, gz, gzL;
+
+	while(1)
+	{	i2c_start();
+		i2c_io(0x1D0);	//MPU6050 ADDR
+		i2c_io(0x13B);  //Accel
+		i2c_stop();
+		i2c_start();
+
+		i2c_io(0x1D1);	
+		ax  = 0xFF & i2c_io(0x0FF);	
+		axL = 0xFF & i2c_io(0x0FF);
+		ay  = 0xFF & i2c_io(0x0FF);	
+		ayL = 0xFF & i2c_io(0x0FF);
+		az  = 0xFF & i2c_io(0x0FF);	
+		azL = 0xFF & i2c_io(0x0FF);
+		
+		i2c_io(0x0FF);	
+		i2c_io(0x0FF);
+
+		gx  = 0xFF & i2c_io(0x0FF);	
+		gxL = 0xFF & i2c_io(0x0FF);
+		gy  = 0xFF & i2c_io(0x0FF);	
+		gyL = 0xFF & i2c_io(0x0FF);
+		gz  = 0xFF & i2c_io(0x0FF);	
+		gzL = 0xFF & i2c_io(0x1FF);
+		i2c_stop();	
+
+		print_str("ax: "); print_hex(ax);
+		print_str("axL: "); print_hex(axL);
+
+		usleep(1000000);	}
+
+
 	/*
 	while(1)
 	{	print_str("RADIO_CH1: "); print_hex(*DEV_RADIO_1);
@@ -110,11 +177,11 @@ int main()
 
 		print_str("------------------------\n");
 		usleep(100000); }
-	
+	*/
 
 	//throttle: 1128 - 1989
 
-	*/
+	
 
 	int num_ch = 0;
 	while(1)
@@ -126,11 +193,11 @@ int main()
 			//*DEV_UART_TX = ch; 
 			buffer[num_ch] = ch;
 			num_ch++;
-			if(num_ch >= 64) 
+			if(num_ch >= 32) 
 			{	num_ch = 0;
-				for(int j = 0; j < 64; j++) 
+				for(int j = 0; j < 32; j++) 
 				{	*DEV_UART_TX = buffer[j];
-					usleep(100000); }
+					/*usleep(100000);*/ }
 				print_str("\n"); }
 				
 		}
