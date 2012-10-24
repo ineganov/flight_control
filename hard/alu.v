@@ -1,25 +1,28 @@
-module alu( input   [6:0] ctrl,
+module alu( input   [7:0] ctrl,
             input  [31:0] A, 
             input  [31:0] B,
             input   [4:0] SH,
-            output [31:0] Y,
-            output        Z );
+            output [31:0] Y );
 
+// ctrl  [7]: Signed operation (e.g. SLT/SLTU)
 // ctrl  [6]: SHIFT SRC (1 - reg, 0 - shamt)
 // ctrl[5:4]: SHIFT OP
 // ctrl  [3]: NEGATE B
 // ctrl[2:0]: ALU OP
 
 
-wire Cin = ctrl[3]; //carry in. Equals 1 when B = NEGATE(B)
-wire [31:0] BB; //inverted or not B
-wire [31:0] Sum = A + BB + Cin;
-wire [31:0] Zero_extend;
+//sign or zero-extension bits:
+wire AE_bit = ctrl[7] ? A[31] : 1'b0;
+wire BE_bit = ctrl[7] ? B[31] : 1'b0;
 
-mux2 bb_mux( .S(ctrl[3]),
-             .D0( B),
-             .D1(~B),
-             .Y (BB)  );
+wire [32:0] op_A = {AE_bit, A};
+wire [32:0] op_B = {BE_bit, B};
+
+wire Cin = ctrl[3]; //carry in. Equals 1 when B = NEGATE(B)
+wire [32:0] op_BN = Cin ? ~op_B : op_B; //inverted or not B
+
+wire [32:0] Sum = op_A + op_BN + Cin;
+
 
 
 wire [4:0] shamt; 
@@ -34,20 +37,18 @@ shifter shifter_unit( .S(ctrl[5:4]),
                       .A(    B    ),
                       .Y(  sh_out ) );
 
+wire [31:0] Zero_extend = {31'b0, Sum[32]};
 
-assign Zero_extend = {31'b0, Sum[31]};
 mux8 out_mux( .S (  ctrl[2:0]      ),
-              .D0(  A & BB         ),
-              .D1(  A | BB         ),
-              .D2(  A ^ BB         ),
-              .D3(~(A | BB)        ),
-              .D4(  Sum            ),
+              .D0(  A & B          ),
+              .D1(  A | B          ),
+              .D2(  A ^ B          ),
+              .D3(~(A | B)         ),
+              .D4(  Sum[31:0]      ),
               .D5(  0              ), //mul? 
               .D6(  sh_out         ), 
               .D7(  Zero_extend    ),
               .Y (  Y              ) );
-
-assign Z  = {Y == 32'b0};
 
 endmodule
 

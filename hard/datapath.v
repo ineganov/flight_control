@@ -20,7 +20,7 @@ module datapath ( input CLK,
                   input        JUMP_R,       //jr, jalr
                   input        NOT_IMPLTD,   //unimplemented instruction
                   input        ALU_SRC_B,    //ALU Operand B 0 - reg_2, 1 - immediate
-                  input  [6:0] ALU_OP,       //ALU Operation select
+                  input  [7:0] ALU_OP,       //ALU Operation select
                   input  [1:0] REG_DST,      //write destination in regfile (0 - rt, 1 - rd, 1X -- 31)
                   input  [1:0] IMMED_EXT,    //immediate extension type (sign, zero, swap)
                   input  [1:0] MFCOP_SEL,    //move from cop sel. 0 - from alu, 1 - from HI, 2 - from LO, 3 -- from C0
@@ -71,11 +71,11 @@ wire        link_d, do_branch, stall, lw_stall, br_stall;
 wire [31:0] pc_plus_4_e, immed_extend_e, src_a_e, src_b_e, 
             src_a_fwd_e, src_b_fwd_e, src_a, src_b, hi_e,
             lo_e, aluout_e, aluout_mux_e;
-wire  [6:0] alu_op_e;
+wire  [7:0] alu_op_e;
 wire  [4:0] reg_dst_addr_e, rs_e, rt_e, rd_e, shamt_e;
 wire  [1:0] reg_dst_e, mfcop_sel_e, mem_optype_e;
 wire        write_reg_e, write_mem_e, aluormem_e, multiply_e, 
-            alu_src_b_e, link_e, alu_zero, mem_partial_e,
+            alu_src_b_e, link_e, mem_partial_e,
             br_inst_e;
 
 //MEM:
@@ -189,7 +189,7 @@ assign link_d = JUMP | JUMP_R | BRANCH_GEZ | BRANCH_LTZ;
 
 
 
-ffd #(169) pipe_reg_E(CLK, RESET | stall, RUN,
+ffd #(170) pipe_reg_E(CLK, RESET | stall, RUN,
                   {  WRITE_REG,         // 1/ write to register file
                      WRITE_MEM,         // 1/ write data memory
                      MEM_PARTIAL,       // 1/ memory byte- or halfword access
@@ -199,7 +199,7 @@ ffd #(169) pipe_reg_E(CLK, RESET | stall, RUN,
                      link_d,            // 1/ link
                      br_inst,           // 1/ branch instruction
                      ALU_SRC_B,         // 1/ ALU Operand B 0 - reg_2, 1 - immediate
-                     ALU_OP,            // 7/ ALU Operation select
+                     ALU_OP,            // 8/ ALU Operation select
                      REG_DST,           // 2/ write destination in regfile (0 - rt, 1 - rd)
                      MFCOP_SEL,         // 2/ mfrom coprocessor selector
                      rd1,               //32/ regfile_out_1
@@ -288,7 +288,7 @@ mux4 alu_src_b_mux( {link_e, alu_src_b_e},
                     32'd4,          //11: 4 for ret_addr calculation
                     src_b );
 
-alu alu(alu_op_e, src_a, src_b, shamt_e, aluout_e, alu_zero);
+alu alu(alu_op_e, src_a, src_b, shamt_e, aluout_e);
 
 wire [63:0] product_e = src_a_fwd_e * src_b_fwd_e;
 ffd #( 64) hi_lo_reg(CLK, RESET, multiply_e & RUN, product_e, {hi_e, lo_e});
